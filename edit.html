@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Edit Job Description</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1 id="formTitle">Edit Job Description</h1>
+<hr>
+
+<div class="edit-form">
+  <label>Code</label>
+  <input id="code">
+
+  <label>Title</label>
+  <input id="title">
+
+  <label>Keywords</label>
+  <input id="keywords">
+
+  <label>File</label>
+  <input id="fileInput" type="file" accept="application/pdf">
+
+  <div>
+    <button onclick="saveJob()" class="primary">Save</button>
+    <button onclick="location.href='index.html'">Cancel</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

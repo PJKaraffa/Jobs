@@ -1,0 +1,198 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 18px;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #343a40;
+  background: #f8fafc;
+}
+
+h1 {
+  font-size: 38px;
+  margin: 0;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #d9dee7;
+  margin: 18px 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #d9dee7;
+  padding-bottom: 25px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+button {
+  border: 1px solid #9aa4b2;
+  background: white;
+  color: #0d6efd;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #eef6ff;
+}
+
+button.primary {
+  background: #1976d2;
+  color: white;
+}
+
+input {
+  padding: 9px 12px;
+  border: 1px solid #c7d0dc;
+  border-radius: 4px;
+  font-size: 15px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+th {
+  color: #0d6efd;
+  text-align: left;
+  padding: 17px 12px;
+  border-bottom: 2px solid #d9dee7;
+  cursor: pointer;
+}
+
+td {
+  padding: 15px 12px;
+  border-bottom: 1px solid #d9dee7;
+  vertical-align: middle;
+}
+
+td:nth-child(2) {
+  width: 34%;
+  line-height: 1.5;
+}
+
+td:nth-child(3) {
+  width: 36%;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  border: none;
+  background: none;
+  font-size: 22px;
+  padding: 2px;
+}
+
+.pager {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.edit-form {
+  max-width: 100%;
+}
+
+.edit-form label {
+  display: block;
+  margin-top: 18px;
+  margin-bottom: 8px;
+}
+
+.edit-form input {
+  width: 100%;
+}
+
+.edit-form input[type="file"] {
+  border: none;
+  padding-left: 0;
+}
+
+.edit-form div {
+  margin-top: 18px;
+}
+
+.login-page {
+  height: 100vh;
+  background: #0f172a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-card {
+  width: 390px;
+  background: white;
+  padding: 35px;
+  border-radius: 14px;
+  box-shadow: 0 15px 40px rgba(0,0,0,.35);
+  text-align: center;
+}
+
+.login-card h1 {
+  font-size: 32px;
+}
+
+.login-card h2 {
+  color: #64748b;
+}
+
+.login-card input,
+.login-card button {
+  width: 100%;
+  margin-top: 10px;
+}
+
+#loginMessage {
+  color: red;
+  font-weight: bold;
+}
+
+.viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#pdfViewer {
+  width: 100%;
+  height: 85vh;
+  border: 1px solid #ccc;
+  margin-top: 18px;
+}
+
+@media(max-width: 800px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+  }
+
+  table {
+    font-size: 14px;
+  }
+}

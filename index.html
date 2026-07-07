@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Job Descriptions</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header">
+  <div>
+    <h1>Job Descriptions</h1>
+  </div>
+
+  <div class="header-actions">
+    <button onclick="location.href='edit.html'">＋ Create New</button>
+    <input id="searchBox" oninput="loadJobs()" placeholder="🔍 Find">
+    <button onclick="logout()">Logout</button>
+  </div>
+</header>
+
+<table>
+  <thead>
+    <tr>
+      <th>Code</th>
+      <th onclick="sortJobs('title')">Title ↑</th>
+      <th>FileName</th>
+      <th>Added<br>Updated</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="jobTable"></tbody>
+</table>
+
+<div class="pager">
+  <button onclick="previousPage()">◀</button>
+  <span id="pageInfo"></span>
+  <button onclick="nextPage()">▶</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

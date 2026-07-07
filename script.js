@@ -1,0 +1,285 @@
+let currentPage = 1;
+let pageSize = 5;
+let sortField = "title";
+let sortDirection = "asc";
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const page = location.pathname.split("/").pop();
+
+  if (page !== "login.html") {
+    await requireLogin();
+  }
+
+  if (page === "index.html" || page === "") {
+    loadJobs();
+  }
+
+  if (page === "edit.html") {
+    loadEditPage();
+  }
+
+  if (page === "viewer.html") {
+    loadViewer();
+  }
+});
+
+async function login() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    document.getElementById("loginMessage").textContent = error.message;
+    return;
+  }
+
+  location.href = "index.html";
+}
+
+async function logout() {
+  await supabaseClient.auth.signOut();
+  location.href = "login.html";
+}
+
+async function requireLogin() {
+  const { data } = await supabaseClient.auth.getSession();
+
+  if (!data.session) {
+    location.href = "login.html";
+  }
+}
+
+async function loadJobs() {
+  const tbody = document.getElementById("jobTable");
+  if (!tbody) return;
+
+  const search = document.getElementById("searchBox")?.value || "";
+
+  let query = supabaseClient
+    .from("job_descriptions")
+    .select("*", { count: "exact" })
+    .eq("active", true)
+    .order(sortField, { ascending: sortDirection === "asc" })
+    .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
+
+  if (search.trim() !== "") {
+    query = query.or(
+      `code.ilike.%${search}%,title.ilike.%${search}%,keywords.ilike.%${search}%,file_name.ilike.%${search}%`
+    );
+  }
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  tbody.innerHTML = "";
+
+  data.forEach(job => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${job.code || ""}</td>
+        <td>${job.title || ""}</td>
+        <td>${job.file_name || ""}</td>
+        <td>${formatDate(job.created_at)}<br>${formatDate(job.updated_at)}</td>
+        <td>
+          <div class="actions">
+            <button class="icon-btn" onclick="viewFile('${job.id}')">👁️</button>
+            <button class="icon-btn" onclick="downloadFile('${job.id}')">⬇️</button>
+            <button class="icon-btn" onclick="editJob('${job.id}')">✏️</button>
+            <button class="icon-btn" onclick="deleteJob('${job.id}')">❌</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("pageInfo").textContent =
+    `Page ${currentPage} of ${Math.max(1, Math.ceil(count / pageSize))}`;
+}
+
+function sortJobs(field) {
+  if (sortField === field) {
+    sortDirection = sortDirection === "asc" ? "desc" : "asc";
+  } else {
+    sortField = field;
+    sortDirection = "asc";
+  }
+
+  loadJobs();
+}
+
+function nextPage() {
+  currentPage++;
+  loadJobs();
+}
+
+function previousPage() {
+  if (currentPage > 1) {
+    currentPage--;
+    loadJobs();
+  }
+}
+
+function editJob(id) {
+  location.href = `edit.html?id=${id}`;
+}
+
+async function loadEditPage() {
+  const id = new URLSearchParams(location.search).get("id");
+
+  if (!id) {
+    document.getElementById("formTitle").textContent = "Create Job Description";
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("job_descriptions")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  document.getElementById("code").value = data.code || "";
+  document.getElementById("title").value = data.title || "";
+  document.getElementById("keywords").value = data.keywords || "";
+}
+
+async function saveJob() {
+  const id = new URLSearchParams(location.search).get("id");
+
+  const code = document.getElementById("code").value.trim();
+  const title = document.getElementById("title").value.trim();
+  const keywords = document.getElementById("keywords").value.trim();
+  const file = document.getElementById("fileInput").files[0];
+
+  let fileName = null;
+  let filePath = null;
+
+  if (file) {
+    fileName = file.name;
+    filePath = `${crypto.randomUUID()}-${file.name}`;
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from("job-descriptions")
+      .upload(filePath, file);
+
+    if (uploadError) {
+      alert(uploadError.message);
+      return;
+    }
+  }
+
+  let record = {
+    code,
+    title,
+    keywords,
+    updated_at: new Date().toISOString()
+  };
+
+  if (file) {
+    record.file_name = fileName;
+    record.file_path = filePath;
+  }
+
+  let result;
+
+  if (id) {
+    result = await supabaseClient
+      .from("job_descriptions")
+      .update(record)
+      .eq("id", id);
+  } else {
+    result = await supabaseClient
+      .from("job_descriptions")
+      .insert(record);
+  }
+
+  if (result.error) {
+    alert(result.error.message);
+    return;
+  }
+
+  location.href = "index.html";
+}
+
+async function viewFile(id) {
+  location.href = `viewer.html?id=${id}`;
+}
+
+async function loadViewer() {
+  const id = new URLSearchParams(location.search).get("id");
+
+  const { data, error } = await supabaseClient
+    .from("job_descriptions")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  const { data: signed } = await supabaseClient.storage
+    .from("job-descriptions")
+    .createSignedUrl(data.file_path, 60 * 10);
+
+  document.getElementById("pdfViewer").src = signed.signedUrl;
+}
+
+async function downloadFile(id) {
+  const { data, error } = await supabaseClient
+    .from("job_descriptions")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  const { data: signed } = await supabaseClient.storage
+    .from("job-descriptions")
+    .createSignedUrl(data.file_path, 60);
+
+  const a = document.createElement("a");
+  a.href = signed.signedUrl;
+  a.download = data.file_name;
+  a.click();
+}
+
+async function deleteJob(id) {
+  if (!confirm("Delete this job description?")) return;
+
+  const { error } = await supabaseClient
+    .from("job_descriptions")
+    .update({ active: false })
+    .eq("id", id);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  loadJobs();
+}
+
+function formatDate(dateText) {
+  if (!dateText) return "";
+
+  const d = new Date(dateText);
+
+  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+}
