@@ -1,33 +1,41 @@
 let currentPage = 1;
-let pageSize = 5;
+const pageSize = 5;
 let sortField = "title";
 let sortDirection = "asc";
 
+const BUCKET = "job_descriptions";
+
 document.addEventListener("DOMContentLoaded", async () => {
-  const page = location.pathname.split("/").pop();
+  const page = getPage();
 
   if (page !== "login.html") {
     await requireLogin();
   }
 
   if (page === "index.html" || page === "") {
-    loadJobs();
+    await loadJobs();
   }
 
   if (page === "edit.html") {
-    loadEditPage();
+    await loadEditPage();
   }
 
   if (page === "viewer.html") {
-    loadViewer();
+    await loadViewer();
   }
 });
+
+function getPage() {
+  return window.location.pathname.split("/").pop();
+}
+
+/* LOGIN */
 
 async function login() {
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value.trim();
 
-  const { error } = await supabaseClient.auth.signInWithPassword({
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
     email,
     password
   });
@@ -37,27 +45,34 @@ async function login() {
     return;
   }
 
-  location.href = "index.html";
+  localStorage.setItem("supabase_user_email", data.user.email);
+  window.location.href = "index.html";
 }
 
 async function logout() {
   await supabaseClient.auth.signOut();
-  location.href = "login.html";
+  localStorage.removeItem("supabase_user_email");
+  window.location.href = "login.html";
 }
 
 async function requireLogin() {
-  const { data } = await supabaseClient.auth.getSession();
+  const { data, error } = await supabaseClient.auth.getSession();
 
-  if (!data.session) {
-    location.href = "login.html";
+  if (error || !data.session) {
+    window.location.href = "login.html";
+    return;
   }
+
+  return data.session;
 }
+
+/* MAIN TABLE */
 
 async function loadJobs() {
   const tbody = document.getElementById("jobTable");
   if (!tbody) return;
 
-  const search = document.getElementById("searchBox")?.value || "";
+  const search = document.getElementById("searchBox")?.value.trim() || "";
 
   let query = supabaseClient
     .from("job_descriptions")
@@ -66,7 +81,7 @@ async function loadJobs() {
     .order(sortField, { ascending: sortDirection === "asc" })
     .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
 
-  if (search.trim() !== "") {
+  if (search !== "") {
     query = query.or(
       `code.ilike.%${search}%,title.ilike.%${search}%,keywords.ilike.%${search}%,file_name.ilike.%${search}%`
     );
@@ -100,8 +115,8 @@ async function loadJobs() {
     `;
   });
 
-  document.getElementById("pageInfo").textContent =
-    `Page ${currentPage} of ${Math.max(1, Math.ceil(count / pageSize))}`;
+  const pages = Math.max(1, Math.ceil(count / pageSize));
+  document.getElementById("pageInfo").textContent = `Page ${currentPage} of ${pages}`;
 }
 
 function sortJobs(field) {
@@ -112,6 +127,7 @@ function sortJobs(field) {
     sortDirection = "asc";
   }
 
+  currentPage = 1;
   loadJobs();
 }
 
@@ -127,12 +143,14 @@ function previousPage() {
   }
 }
 
+/* EDIT / CREATE */
+
 function editJob(id) {
-  location.href = `edit.html?id=${id}`;
+  window.location.href = `edit.html?id=${id}`;
 }
 
 async function loadEditPage() {
-  const id = new URLSearchParams(location.search).get("id");
+  const id = new URLSearchParams(window.location.search).get("id");
 
   if (!id) {
     document.getElementById("formTitle").textContent = "Create Job Description";
@@ -150,45 +168,57 @@ async function loadEditPage() {
     return;
   }
 
+  document.getElementById("formTitle").textContent = "Edit Job Description";
   document.getElementById("code").value = data.code || "";
   document.getElementById("title").value = data.title || "";
   document.getElementById("keywords").value = data.keywords || "";
 }
 
 async function saveJob() {
-  const id = new URLSearchParams(location.search).get("id");
+  const session = await requireLogin();
+
+  if (!session) {
+    alert("You are not logged in.");
+    return;
+  }
+
+  const id = new URLSearchParams(window.location.search).get("id");
 
   const code = document.getElementById("code").value.trim();
   const title = document.getElementById("title").value.trim();
   const keywords = document.getElementById("keywords").value.trim();
   const file = document.getElementById("fileInput").files[0];
 
-  let fileName = null;
-  let filePath = null;
-
-  if (file) {
-    fileName = file.name;
-    filePath = `${crypto.randomUUID()}-${file.name}`;
-
-    const { error: uploadError } = await supabaseClient.storage
-      .from("job-descriptions")
-      .upload(filePath, file);
-
-    if (uploadError) {
-      alert(uploadError.message);
-      return;
-    }
+  if (!code || !title) {
+    alert("Code and Title are required.");
+    return;
   }
 
   let record = {
-    code,
-    title,
-    keywords,
+    code: code,
+    title: title,
+    keywords: keywords,
+    active: true,
     updated_at: new Date().toISOString()
   };
 
   if (file) {
-    record.file_name = fileName;
+    const cleanFileName = file.name.replaceAll(" ", "_");
+    const filePath = `${code}/${Date.now()}_${cleanFileName}`;
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from(BUCKET)
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: true
+      });
+
+    if (uploadError) {
+      alert("Upload error: " + uploadError.message);
+      return;
+    }
+
+    record.file_name = file.name;
     record.file_path = filePath;
   }
 
@@ -202,23 +232,26 @@ async function saveJob() {
   } else {
     result = await supabaseClient
       .from("job_descriptions")
-      .insert(record);
+      .insert([record]);
   }
 
   if (result.error) {
+    console.log(result.error);
     alert(result.error.message);
     return;
   }
 
-  location.href = "index.html";
+  window.location.href = "index.html";
 }
 
+/* VIEW / DOWNLOAD */
+
 async function viewFile(id) {
-  location.href = `viewer.html?id=${id}`;
+  window.location.href = `viewer.html?id=${id}`;
 }
 
 async function loadViewer() {
-  const id = new URLSearchParams(location.search).get("id");
+  const id = new URLSearchParams(window.location.search).get("id");
 
   const { data, error } = await supabaseClient
     .from("job_descriptions")
@@ -231,9 +264,20 @@ async function loadViewer() {
     return;
   }
 
-  const { data: signed } = await supabaseClient.storage
-    .from("job-descriptions")
-    .createSignedUrl(data.file_path, 60 * 10);
+  if (!data.file_path) {
+    alert("No file attached.");
+    window.location.href = "index.html";
+    return;
+  }
+
+  const { data: signed, error: signedError } = await supabaseClient.storage
+    .from(BUCKET)
+    .createSignedUrl(data.file_path, 600);
+
+  if (signedError) {
+    alert(signedError.message);
+    return;
+  }
 
   document.getElementById("pdfViewer").src = signed.signedUrl;
 }
@@ -250,22 +294,39 @@ async function downloadFile(id) {
     return;
   }
 
-  const { data: signed } = await supabaseClient.storage
-    .from("job-descriptions")
+  if (!data.file_path) {
+    alert("No file attached.");
+    return;
+  }
+
+  const { data: signed, error: signedError } = await supabaseClient.storage
+    .from(BUCKET)
     .createSignedUrl(data.file_path, 60);
+
+  if (signedError) {
+    alert(signedError.message);
+    return;
+  }
 
   const a = document.createElement("a");
   a.href = signed.signedUrl;
-  a.download = data.file_name;
+  a.download = data.file_name || "download.pdf";
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
 }
+
+/* DELETE */
 
 async function deleteJob(id) {
   if (!confirm("Delete this job description?")) return;
 
   const { error } = await supabaseClient
     .from("job_descriptions")
-    .update({ active: false })
+    .update({
+      active: false,
+      updated_at: new Date().toISOString()
+    })
     .eq("id", id);
 
   if (error) {
@@ -273,13 +334,17 @@ async function deleteJob(id) {
     return;
   }
 
-  loadJobs();
+  await loadJobs();
 }
+
+/* HELPERS */
 
 function formatDate(dateText) {
   if (!dateText) return "";
 
   const d = new Date(dateText);
+
+  if (isNaN(d)) return "";
 
   return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
 }
