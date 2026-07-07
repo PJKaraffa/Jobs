@@ -6,26 +6,46 @@
 </head>
 <body>
 
-<h1 id="formTitle">Edit Job Description</h1>
-<hr>
+<div class="form-card">
 
-<div class="edit-form">
-  <label>Code</label>
-  <input id="code">
+  <h1 id="formTitle">Create Job Description</h1>
 
-  <label>Title</label>
-  <input id="title">
+  <div class="form-line"></div>
 
-  <label>Keywords</label>
-  <input id="keywords">
+  <div class="job-form">
 
-  <label>File</label>
-  <input id="fileInput" type="file" accept="application/pdf">
+    <label>Code</label>
+    <input id="code" class="small-input" placeholder="0421">
 
-  <div>
-    <button onclick="saveJob()" class="primary">Save</button>
-    <button onclick="location.href='index.html'">Cancel</button>
+    <label>Title</label>
+    <input id="title" placeholder="Assistant Manager Department of Data Management">
+
+    <label>Keywords</label>
+    <input id="keywords" placeholder="Manager, Data, Technology">
+
+    <label>Department</label>
+    <select id="department">
+      <option value="">Select Department</option>
+      <option>Technology Services</option>
+      <option>Data Management</option>
+      <option>Human Resources</option>
+      <option>Finance</option>
+      <option>Operations</option>
+      <option>Facilities</option>
+      <option>Teaching and Learning</option>
+      <option>Special Education</option>
+    </select>
+
+    <label>Choose File</label>
+    <input id="fileInput" type="file" accept="application/pdf">
+
+    <div class="button-row">
+      <button onclick="saveJob()" class="primary">Save</button>
+      <button onclick="location.href='index.html'">Cancel</button>
+    </div>
+
   </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
