@@ -310,37 +310,37 @@ async function loadViewer() {
 }
 
 async function downloadFile(id) {
-  const { data, error } = await supabaseClient
-    .from("job_descriptions")
-    .select("*")
-    .eq("id", id)
-    .single();
 
-  if (error) {
-    alert(error.message);
-    return;
-  }
+    const { data, error } = await supabaseClient
+        .from("job_descriptions")
+        .select("file_path")
+        .eq("id", id)
+        .single();
 
-  if (!data.file_path) {
-    alert("No file attached.");
-    return;
-  }
+    if (error) {
+        alert(error.message);
+        return;
+    }
 
-  const { data: signed, error: signedError } = await supabaseClient.storage
-    .from(BUCKET)
-    .createSignedUrl(data.file_path, 60);
+    if (!data.file_path) {
+        alert("No PDF attached.");
+        return;
+    }
 
-  if (signedError) {
-    alert(signedError.message);
-    return;
-  }
+    const { data: signed, error: signedError } =
+        await supabaseClient.storage
+            .from(BUCKET)
+            .createSignedUrl(data.file_path, 3600, {
+                download: false
+            });
 
-  const a = document.createElement("a");
-  a.href = signed.signedUrl;
-  a.download = data.file_name || "download.pdf";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+    if (signedError) {
+        alert(signedError.message);
+        return;
+    }
+
+    // Opens the PDF in a new browser tab
+    window.open(signed.signedUrl, "_blank");
 }
 
 /* DELETE */
