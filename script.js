@@ -247,7 +247,34 @@ async function saveJob() {
 /* VIEW / DOWNLOAD */
 
 async function viewFile(id) {
-  window.location.href = `viewer.html?id=${id}`;
+  const { data, error } = await supabaseClient
+    .from("job_descriptions")
+    .select("file_path")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  if (!data.file_path) {
+    alert("No PDF attached.");
+    return;
+  }
+
+  const { data: signed, error: signedError } = await supabaseClient.storage
+    .from(BUCKET)
+    .createSignedUrl(data.file_path, 3600, {
+      download: false
+    });
+
+  if (signedError) {
+    alert(signedError.message);
+    return;
+  }
+
+  window.open(signed.signedUrl, "_blank");
 }
 
 async function loadViewer() {
